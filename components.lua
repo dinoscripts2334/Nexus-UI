@@ -1,4 +1,14 @@
-local Components = {}
+TabButton.MouseEnter:Connect(function()
+        if not Tab.Active then
+            Utilities:Tween(TabButton, {BackgroundColor3 = window.Theme.Secondary}, 0.2)
+        end
+    end)
+    
+    TabButton.MouseLeave:Connect(function()
+        if not Tab.Active then
+            Utilities:Tween(TabButton, {BackgroundColor3 = window.Theme.Tertiary}, 0.2)
+        end
+    end)local Components = {}
 
 -- Utilities direkt hier definieren
 local TweenService = game:GetService("TweenService")
