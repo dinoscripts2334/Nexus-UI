@@ -1,13 +1,18 @@
+-- NexusUI Main Library
+-- Version: 1.1.1 (Fixed)
+
 local NexusUI = {
-    Version = "1.1.0",
+    Version = "1.1.1",
     Windows = {}
 }
 
+-- Services
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
+-- Get Parent GUI
 local function GetParent()
     if RunService:IsStudio() then
         return game.Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -16,6 +21,7 @@ local function GetParent()
     end
 end
 
+-- Utilities
 local Utilities = {}
 
 function Utilities:Tween(object, properties, duration, easingStyle, easingDirection)
@@ -404,21 +410,24 @@ function NexusUI:CreateWindow(config)
     ContentFrame.Parent = MainFrame
     Window.ContentFrame = ContentFrame
     
+    -- Load Components
     Window.CreateTab = function(self, config)
-        -- KORRIGIERTE URL AUF DEIN REPO
+        -- FIX: Konsistente, stabile URL zum Laden der Komponenten
         local Components = loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/Nexus-UI/main/components.lua"))()
         local tab = Components.CreateTab(self, config)
         
-        if not Window.ActiveTab then
-            tab.Activate()
+        -- FIX: Sicherstellen, dass der erste Tab aktiviert wird, wenn er erstellt wird
+        if not Window.ActiveTab then 
+            tab.Activate() 
         end
-        
+
         return tab
     end
     
     Window.Save = function(fileName) NexusUI:Save(Window, fileName) end
     Window.Load = function(json) NexusUI:Load(Window, json) end
     
+    -- Startup Animation
     Utilities:Tween(MainFrame, {Size = Window.Config.Size}, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     
     table.insert(self.Windows, Window)
