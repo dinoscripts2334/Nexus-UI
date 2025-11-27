@@ -1,11 +1,8 @@
 -- NexusUI Main Library
--- Version: 1.0.0
--- Created by: YourName
+-- Version: 1.1.0
 
 local NexusUI = {
-    Version = "1.0.0",
-    Themes = {},
-    Icons = {},
+    Version = "1.1.0",
     Windows = {}
 }
 
@@ -15,7 +12,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
--- Get CoreGui or PlayerGui
+-- Get Parent GUI
 local function GetParent()
     if RunService:IsStudio() then
         return game.Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -24,7 +21,7 @@ local function GetParent()
     end
 end
 
--- Utility Functions
+-- Utilities
 local Utilities = {}
 
 function Utilities:Tween(object, properties, duration, easingStyle, easingDirection)
@@ -163,7 +160,7 @@ function NexusUI:Notify(config)
     local title = config.Title or "Notification"
     local content = config.Content or ""
     local duration = config.Duration or 3
-    local type = config.Type or "Info" -- Success, Warning, Danger, Info
+    local type = config.Type or "Info"
     
     local notifGui = Instance.new("ScreenGui")
     notifGui.Name = "NexusNotification"
@@ -172,7 +169,7 @@ function NexusUI:Notify(config)
     
     local notifFrame = Instance.new("Frame")
     notifFrame.Size = UDim2.new(0, 320, 0, 80)
-    notifFrame.Position = UDim2.new(1, -340, 0, 20)
+    notifFrame.Position = UDim2.new(1, 20, 0, 20)
     notifFrame.BackgroundColor3 = self.Themes.Dark.Secondary
     notifFrame.BorderSizePixel = 0
     notifFrame.Parent = notifGui
@@ -209,10 +206,8 @@ function NexusUI:Notify(config)
     contentLabel.TextWrapped = true
     contentLabel.Parent = notifFrame
     
-    -- Slide in animation
     Utilities:Tween(notifFrame, {Position = UDim2.new(1, -340, 0, 20)}, 0.5, Enum.EasingStyle.Back)
     
-    -- Auto close
     task.delay(duration, function()
         Utilities:Tween(notifFrame, {Position = UDim2.new(1, 20, 0, 20)}, 0.3)
         task.wait(0.3)
@@ -243,7 +238,6 @@ function NexusUI:CreateWindow(config)
     
     Window.Theme = self.Themes[Window.Config.Theme] or self.Themes.Dark
     
-    -- Apply custom accent if provided
     if config.Accent then
         Window.Theme.Accent = config.Accent
     end
@@ -260,11 +254,12 @@ function NexusUI:CreateWindow(config)
     -- Main Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Size = Window.Config.Size
+    MainFrame.Size = UDim2.new(0, 0, 0, 0)
     MainFrame.Position = Window.Config.Position or UDim2.new(0.5, -Window.Config.Size.X.Offset/2, 0.5, -Window.Config.Size.Y.Offset/2)
     MainFrame.BackgroundColor3 = Window.Theme.Background
     MainFrame.BorderSizePixel = 0
     MainFrame.ClipsDescendants = true
+    MainFrame.Active = true
     MainFrame.Parent = ScreenGui
     
     Window.MainFrame = MainFrame
@@ -405,7 +400,7 @@ function NexusUI:CreateWindow(config)
     local tabPadding = Instance.new("UIPadding")
     tabPadding.PaddingTop = UDim.new(0, 10)
     tabPadding.PaddingLeft = UDim.new(0, 8)
-    tabPadding.PaddingRight = UDim2.new(0, 8)
+    tabPadding.PaddingRight = UDim.new(0, 8)
     tabPadding.PaddingBottom = UDim.new(0, 10)
     tabPadding.Parent = TabContainer
     
@@ -427,7 +422,7 @@ function NexusUI:CreateWindow(config)
     -- Draggable
     Utilities:MakeDraggable(MainFrame, TopBar)
     
-    -- Button Functionality
+    -- Close Button
     CloseButton.MouseButton1Click:Connect(function()
         Utilities:RippleEffect(CloseButton, Color3.fromRGB(255, 255, 255))
         Utilities:Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
@@ -446,6 +441,7 @@ function NexusUI:CreateWindow(config)
         Utilities:Tween(CloseButton, {BackgroundColor3 = Window.Theme.Danger}, 0.2)
     end)
     
+    -- Minimize Button
     MinimizeButton.MouseButton1Click:Connect(function()
         Utilities:RippleEffect(MinimizeButton, Window.Theme.Accent)
         Window.Minimized = not Window.Minimized
@@ -473,10 +469,14 @@ function NexusUI:CreateWindow(config)
         end
     end)
     
-    -- Load Components Module
-    local Components = loadstring(game:HttpGet("YOUR_COMPONENTS_URL_HERE"))()
-    Components.Init(Window, Utilities)
-    Window.CreateTab = Components.CreateTab
+    -- Load Components
+    Window.CreateTab = function(self, config)
+        local Components = loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/Nexus-UI/refs/heads/main/components.lua"))()
+        return Components.CreateTab(self, config)
+    end
+    
+    -- Startup Animation
+    Utilities:Tween(MainFrame, {Size = Window.Config.Size}, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     
     table.insert(self.Windows, Window)
     return Window
@@ -494,8 +494,7 @@ function NexusUI:SetTheme(window, themeName)
     window.TitleLabel.TextColor3 = theme.Text
     
     for _, tab in pairs(window.Tabs) do
-        -- Update tab colors
-        tab.Button.BackgroundColor3 = tab.Active and theme.Tertiary or theme.Secondary
+        tab.Button.BackgroundColor3 = tab.Active and theme.Secondary or theme.Tertiary
         tab.Label.TextColor3 = tab.Active and theme.Text or theme.TextDark
     end
     
