@@ -1,18 +1,13 @@
--- NexusUI Main Library
--- Version: 1.1.0
-
 local NexusUI = {
     Version = "1.1.0",
     Windows = {}
 }
 
--- Services
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
--- Get Parent GUI
 local function GetParent()
     if RunService:IsStudio() then
         return game.Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -21,7 +16,6 @@ local function GetParent()
     end
 end
 
--- Utilities
 local Utilities = {}
 
 function Utilities:Tween(object, properties, duration, easingStyle, easingDirection)
@@ -55,248 +49,364 @@ function Utilities:MakeDraggable(frame, dragFrame)
     
     dragFrame.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
+            if dragging then
+                local delta = input.Position - dragStart
+                local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                
+                frame.Position = newPos
+            end
         end
     end)
     
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            Utilities:Tween(frame, {
-                Position = UDim2.new(
-                    startPos.X.Scale,
-                    startPos.X.Offset + delta.X,
-                    startPos.Y.Scale,
-                    startPos.Y.Offset + delta.Y
-                )
-            }, 0.1)
+    dragFrame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
         end
     end)
 end
 
-function Utilities:RippleEffect(button, color)
-    local ripple = Instance.new("Frame")
-    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
-    ripple.BackgroundColor3 = color or Color3.fromRGB(255, 255, 255)
-    ripple.BackgroundTransparency = 0.5
-    ripple.BorderSizePixel = 0
-    ripple.Size = UDim2.new(0, 0, 0, 0)
-    ripple.ZIndex = button.ZIndex + 1
-    ripple.Parent = button
+function NexusUI:Notify(config)
+    config = config or {}
+    local parent = GetParent()
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = ripple
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Size = UDim2.new(0, 250, 0, 60)
+    notifFrame.Position = UDim2.new(1, -260, 1, 10)
+    notifFrame.AnchorPoint = Vector2.new(1, 1)
+    notifFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    notifFrame.BorderSizePixel = 0
+    notifFrame.ZIndex = 100
+    notifFrame.Parent = parent
     
-    local mousePos = UserInputService:GetMouseLocation()
-    local buttonPos = button.AbsolutePosition
-    local relativePos = mousePos - buttonPos
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = notifFrame
     
-    ripple.Position = UDim2.new(0, relativePos.X, 0, relativePos.Y)
+    local TypeColor = Color3.fromRGB(0, 0, 0)
+    if config.Type == "Success" then
+        TypeColor = Color3.fromRGB(56, 179, 117)
+    elseif config.Type == "Warning" then
+        TypeColor = Color3.fromRGB(240, 173, 78)
+    elseif config.Type == "Danger" then
+        TypeColor = Color3.fromRGB(217, 83, 79)
+    elseif config.Type == "Info" then
+        TypeColor = Color3.fromRGB(91, 192, 222)
+    end
     
-    local maxSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2
+    local ColorBar = Instance.new("Frame")
+    ColorBar.Size = UDim2.new(0, 5, 1, 0)
+    ColorBar.BackgroundColor3 = TypeColor
+    ColorBar.BorderSizePixel = 0
+    ColorBar.Parent = notifFrame
     
-    Utilities:Tween(ripple, {
-        Size = UDim2.new(0, maxSize, 0, maxSize),
-        BackgroundTransparency = 1
-    }, 0.5)
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, -15, 0, 20)
+    TitleLabel.Position = UDim2.new(0, 10, 0, 5)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = config.Title or "Notification"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 15
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = notifFrame
     
-    task.delay(0.5, function()
-        ripple:Destroy()
-    end)
+    local ContentLabel = Instance.new("TextLabel")
+    ContentLabel.Size = UDim2.new(1, -15, 0, 20)
+    ContentLabel.Position = UDim2.new(0, 10, 0, 25)
+    ContentLabel.BackgroundTransparency = 1
+    ContentLabel.Text = config.Content or ""
+    ContentLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    ContentLabel.TextSize = 13
+    ContentLabel.Font = Enum.Font.Gotham
+    ContentLabel.TextXAlignment = Enum.TextXAlignment.Left
+    ContentLabel.Parent = notifFrame
+    
+    Utilities:Tween(notifFrame, {Position = UDim2.new(1, -260, 1, -10)}, 0.3)
+    
+    if config.Duration and config.Duration > 0 then
+        delay(config.Duration, function()
+            Utilities:Tween(notifFrame, {Position = UDim2.new(1, -260, 1, 10)}, 0.3)
+            delay(0.3, function()
+                notifFrame:Destroy()
+            end)
+        end)
+    end
 end
 
-NexusUI.Utilities = Utilities
+NexusUI.Styles = {
+    CornerRadius = UDim.new(0, 8),
+    StrokeThickness = 1.5,
+    TabContainerWidth = 160,
+    TopBarHeight = 50,
+    ComponentSpacing = UDim.new(0, 10),
+    Font = Enum.Font.GothamMedium,
+    TitleSize = 17,
+    TextSize = 14,
+}
 
--- Theme System
 NexusUI.Themes = {
     Dark = {
-        Background = Color3.fromRGB(18, 18, 22),
-        Secondary = Color3.fromRGB(22, 22, 27),
-        Tertiary = Color3.fromRGB(28, 28, 33),
+        Background = Color3.fromRGB(35, 35, 35),
+        Secondary = Color3.fromRGB(45, 45, 45),
+        Tertiary = Color3.fromRGB(55, 55, 55),
         Accent = Color3.fromRGB(138, 43, 226),
-        AccentDark = Color3.fromRGB(108, 13, 196),
+        AccentDark = Color3.fromRGB(118, 23, 206),
         Text = Color3.fromRGB(255, 255, 255),
         TextDark = Color3.fromRGB(180, 180, 180),
-        Border = Color3.fromRGB(40, 40, 50),
-        Success = Color3.fromRGB(40, 167, 69),
-        Warning = Color3.fromRGB(255, 193, 7),
-        Danger = Color3.fromRGB(220, 53, 69),
-        Info = Color3.fromRGB(23, 162, 184)
+        Border = Color3.fromRGB(65, 65, 65)
     },
     Light = {
-        Background = Color3.fromRGB(240, 240, 245),
-        Secondary = Color3.fromRGB(250, 250, 255),
-        Tertiary = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(138, 43, 226),
-        AccentDark = Color3.fromRGB(108, 13, 196),
-        Text = Color3.fromRGB(20, 20, 20),
+        Background = Color3.fromRGB(240, 240, 240),
+        Secondary = Color3.fromRGB(255, 255, 255),
+        Tertiary = Color3.fromRGB(220, 220, 220),
+        Accent = Color3.fromRGB(0, 149, 255),
+        AccentDark = Color3.fromRGB(0, 120, 220),
+        Text = Color3.fromRGB(50, 50, 50),
         TextDark = Color3.fromRGB(100, 100, 100),
-        Border = Color3.fromRGB(200, 200, 210),
-        Success = Color3.fromRGB(40, 167, 69),
-        Warning = Color3.fromRGB(255, 193, 7),
-        Danger = Color3.fromRGB(220, 53, 69),
-        Info = Color3.fromRGB(23, 162, 184)
+        Border = Color3.fromRGB(200, 200, 200)
     },
     Ocean = {
-        Background = Color3.fromRGB(15, 23, 42),
-        Secondary = Color3.fromRGB(30, 41, 59),
-        Tertiary = Color3.fromRGB(51, 65, 85),
-        Accent = Color3.fromRGB(14, 165, 233),
-        AccentDark = Color3.fromRGB(2, 132, 199),
-        Text = Color3.fromRGB(248, 250, 252),
-        TextDark = Color3.fromRGB(148, 163, 184),
-        Border = Color3.fromRGB(71, 85, 105),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(234, 179, 8),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Info = Color3.fromRGB(59, 130, 246)
+        Background = Color3.fromRGB(13, 22, 33),
+        Secondary = Color3.fromRGB(22, 33, 49),
+        Tertiary = Color3.fromRGB(33, 44, 60),
+        Accent = Color3.fromRGB(52, 152, 219),
+        AccentDark = Color3.fromRGB(41, 128, 185),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDark = Color3.fromRGB(180, 180, 180),
+        Border = Color3.fromRGB(44, 55, 71)
     }
 }
 
--- Notification System
-function NexusUI:Notify(config)
-    config = config or {}
-    local title = config.Title or "Notification"
-    local content = config.Content or ""
-    local duration = config.Duration or 3
-    local type = config.Type or "Info"
+function NexusUI:Save(window, fileName)
+    local data = {
+        Theme = window.Config.Theme,
+        Position = {
+            X = window.MainFrame.Position.X.Offset, 
+            Y = window.MainFrame.Position.Y.Offset
+        },
+        ComponentStates = {}
+    }
     
-    local notifGui = Instance.new("ScreenGui")
-    notifGui.Name = "NexusNotification"
-    notifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    notifGui.Parent = GetParent()
+    local success, json = pcall(HttpService.JSONEncode, HttpService, data)
     
-    local notifFrame = Instance.new("Frame")
-    notifFrame.Size = UDim2.new(0, 320, 0, 80)
-    notifFrame.Position = UDim2.new(1, 20, 0, 20)
-    notifFrame.BackgroundColor3 = self.Themes.Dark.Secondary
-    notifFrame.BorderSizePixel = 0
-    notifFrame.Parent = notifGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = notifFrame
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = self.Themes.Dark[type] or self.Themes.Dark.Accent
-    stroke.Thickness = 2
-    stroke.Parent = notifFrame
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -20, 0, 25)
-    titleLabel.Position = UDim2.new(0, 10, 0, 10)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = title
-    titleLabel.TextColor3 = self.Themes.Dark.Text
-    titleLabel.TextSize = 16
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = notifFrame
-    
-    local contentLabel = Instance.new("TextLabel")
-    contentLabel.Size = UDim2.new(1, -20, 0, 35)
-    contentLabel.Position = UDim2.new(0, 10, 0, 35)
-    contentLabel.BackgroundTransparency = 1
-    contentLabel.Text = content
-    contentLabel.TextColor3 = self.Themes.Dark.TextDark
-    contentLabel.TextSize = 13
-    contentLabel.Font = Enum.Font.Gotham
-    contentLabel.TextXAlignment = Enum.TextXAlignment.Left
-    contentLabel.TextWrapped = true
-    contentLabel.Parent = notifFrame
-    
-    Utilities:Tween(notifFrame, {Position = UDim2.new(1, -340, 0, 20)}, 0.5, Enum.EasingStyle.Back)
-    
-    task.delay(duration, function()
-        Utilities:Tween(notifFrame, {Position = UDim2.new(1, 20, 0, 20)}, 0.3)
-        task.wait(0.3)
-        notifGui:Destroy()
-    end)
+    if success and pcall(setclipboard, json) then
+        self:Notify({Title = "Speichern erfolgreich", Content = "Einstellungen in die Zwischenablage kopiert.", Type = "Success", Duration = 3})
+    else
+        self:Notify({Title = "Speicherfehler", Content = "Konfiguration konnte nicht serialisiert/kopiert werden.", Type = "Danger", Duration = 3})
+    end
 end
 
--- Create Window
+function NexusUI:Load(window, json)
+    local success, data = pcall(HttpService.JSONDecode, HttpService, json)
+    if not success or not data then
+        self:Notify({Title = "Ladefehler", Content = "Ungültige Konfigurationsdaten.", Type = "Danger", Duration = 3})
+        return
+    end
+
+    if data.Theme and self.Themes[data.Theme] then
+        self:SetTheme(window, data.Theme)
+        window.Config.Theme = data.Theme
+    end
+
+    if data.Position and data.Position.X and data.Position.Y then
+        local pos = UDim2.new(0.5, data.Position.X, 0.5, data.Position.Y)
+        Utilities:Tween(window.MainFrame, {Position = pos}, 0.3)
+    end
+    
+    self:Notify({Title = "Laden erfolgreich", Content = "Konfiguration geladen.", Type = "Success", Duration = 3})
+end
+
 function NexusUI:CreateWindow(config)
     config = config or {}
     
     local Window = {
-        Config = {
-            Name = config.Name or "NexusUI",
-            Author = config.Author or "Unknown",
-            Size = config.Size or UDim2.new(0, 650, 0, 500),
-            Theme = config.Theme or "Dark",
-            Accent = config.Accent or Color3.fromRGB(138, 43, 226),
-            Position = config.Position,
-            CloseCallback = config.CloseCallback,
-            MinimizeKey = config.MinimizeKey or Enum.KeyCode.RightControl
-        },
+        Config = config,
         Tabs = {},
-        CurrentTab = nil,
-        Minimized = false,
-        Theme = nil
+        Theme = self.Themes[config.Theme] or self.Themes.Dark,
+        ActiveTab = nil,
+        ComponentRegistry = {},
+        Library = NexusUI,
     }
     
-    Window.Theme = self.Themes[Window.Config.Theme] or self.Themes.Dark
+    Window.Theme.Accent = config.Accent or Window.Theme.Accent
+    Window.Theme.AccentDark = config.Accent or Window.Theme.AccentDark
     
-    if config.Accent then
-        Window.Theme.Accent = config.Accent
-    end
+    local parent = GetParent()
     
-    -- ScreenGui
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "NexusUI_" .. HttpService:GenerateGUID(false)
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = GetParent()
-    
-    Window.ScreenGui = ScreenGui
-    
-    -- Main Frame
     local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 0, 0, 0)
-    MainFrame.Position = Window.Config.Position or UDim2.new(0.5, -Window.Config.Size.X.Offset/2, 0.5, -Window.Config.Size.Y.Offset/2)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.BackgroundColor3 = Window.Theme.Background
     MainFrame.BorderSizePixel = 0
-    MainFrame.ClipsDescendants = true
-    MainFrame.Active = true
-    MainFrame.Parent = ScreenGui
-    
+    MainFrame.Parent = parent
     Window.MainFrame = MainFrame
     
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 12)
-    mainCorner.Parent = MainFrame
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = self.Styles.CornerRadius
+    Corner.Parent = MainFrame
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Thickness = self.Styles.StrokeThickness
+    Stroke.Color = Window.Theme.Border
+    Stroke.Parent = MainFrame
     
-    local mainStroke = Instance.new("UIStroke")
-    mainStroke.Color = Window.Theme.Border
-    mainStroke.Thickness = 1.5
-    mainStroke.Transparency = 0.5
-    mainStroke.Parent = MainFrame
-    
-    -- Top Bar
     local TopBar = Instance.new("Frame")
-    TopBar.Name = "TopBar"
-    TopBar.Size = UDim2.new(1, 0, 0, 50)
+    TopBar.Size = UDim2.new(1, 0, 0, self.Styles.TopBarHeight)
     TopBar.BackgroundColor3 = Window.Theme.Secondary
     TopBar.BorderSizePixel = 0
     TopBar.Parent = MainFrame
-    
     Window.TopBar = TopBar
     
-    local topCorner = Instance.new("UICorner")
-    topCorner.CornerRadius = UDim.new(0, 12)
-    topCorner.Parent = TopBar
+    Utilities:MakeDraggable(MainFrame, TopBar)
     
-    local topFix = Instance.new("Frame")
-    topFix.Size = UDim2.new(1, 0, 0, 12)
-    topFix.Position = UDim2.new(0, 0, 1, -12)
-    topFix.BackgroundColor3 = Window.Theme.Secondary
-    topFix.BorderSizePixel = 0
-    topFix.Parent = TopBar
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(0, 250, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = config.Name or "NexusUI"
+    TitleLabel.TextColor3 = Window.Theme.Text
+    TitleLabel.TextSize = self.Styles.TitleSize
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TopBar
+    Window.TitleLabel = TitleLabel
     
-    -- Logo
-    local Logo = Instance.new("Frame")
+    local AuthorLabel = Instance.new("TextLabel")
+    AuthorLabel.Size = UDim2.new(0, 100, 1, 0)
+    AuthorLabel.AnchorPoint = Vector2.new(1, 0)
+    AuthorLabel.Position = UDim2.new(1, -10, 0, 0)
+    AuthorLabel.BackgroundTransparency = 1
+    AuthorLabel.Text = config.Author or "v" .. self.Version
+    AuthorLabel.TextColor3 = Window.Theme.TextDark
+    AuthorLabel.TextSize = 13
+    AuthorLabel.Font = Enum.Font.Gotham
+    AuthorLabel.TextXAlignment = Enum.TextXAlignment.Right
+    AuthorLabel.Parent = TopBar
+    
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 30, 1, 0)
+    CloseButton.Position = UDim2.new(1, -10, 0, 0)
+    CloseButton.AnchorPoint = Vector2.new(1, 0)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Text = "X"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextSize = 18
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.Parent = TopBar
+    
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Size = UDim2.new(0, 30, 1, 0)
+    MinimizeButton.Position = UDim2.new(1, -40, 0, 0)
+    MinimizeButton.AnchorPoint = Vector2.new(1, 0)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 200)
+    MinimizeButton.BorderSizePixel = 0
+    MinimizeButton.Text = "—"
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.TextSize = 18
+    MinimizeButton.Font = Enum.Font.GothamBold
+    MinimizeButton.Parent = TopBar
+    
+    CloseButton.MouseButton1Click:Connect(function()
+        Utilities:Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+        delay(0.5, function()
+            MainFrame:Destroy()
+            for i, v in ipairs(self.Windows) do
+                if v == Window then
+                    table.remove(self.Windows, i)
+                    break
+                end
+            end
+        end)
+    end)
+    
+    local minimized = false
+    MinimizeButton.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        if minimized then
+            Utilities:Tween(MainFrame, {Size = UDim2.new(Window.Config.Size.X.Scale, Window.Config.Size.X.Offset, 0, self.Styles.TopBarHeight)}, 0.3)
+            MinimizeButton.Text = "□"
+        else
+            Utilities:Tween(MainFrame, {Size = Window.Config.Size}, 0.3)
+            MinimizeButton.Text = "—"
+        end
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == Window.Config.MinimizeKey then
+            MinimizeButton.MouseButton1Click:Fire()
+        end
+    end)
+    
+    local TabContainer = Instance.new("Frame")
+    TabContainer.Size = UDim2.new(0, self.Styles.TabContainerWidth, 1, -self.Styles.TopBarHeight)
+    TabContainer.Position = UDim2.new(0, 0, 0, self.Styles.TopBarHeight)
+    TabContainer.BackgroundColor3 = Window.Theme.Secondary
+    TabContainer.BorderSizePixel = 0
+    TabContainer.Parent = MainFrame
+    Window.TabContainer = TabContainer
+    
+    local TabContainerLayout = Instance.new("UIListLayout")
+    TabContainerLayout.Padding = UDim.new(0, 5)
+    TabContainerLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    TabContainerLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+    TabContainerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    TabContainerLayout.Parent = TabContainer
+    
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Size = UDim2.new(1, -self.Styles.TabContainerWidth, 1, -self.Styles.TopBarHeight)
+    ContentFrame.Position = UDim2.new(0, self.Styles.TabContainerWidth, 0, self.Styles.TopBarHeight)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.BorderSizePixel = 0
+    ContentFrame.Parent = MainFrame
+    Window.ContentFrame = ContentFrame
+    
+    Window.CreateTab = function(self, config)
+        local Components = loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/Nexus-UI/refs/heads/main/components.lua"))()
+        local tab = Components.CreateTab(self, config)
+        
+        if not Window.ActiveTab then
+            tab.Activate()
+        end
+        
+        return tab
+    end
+    
+    Window.Save = function(fileName) NexusUI:Save(Window, fileName) end
+    Window.Load = function(json) NexusUI:Load(Window, json) end
+    
+    Utilities:Tween(MainFrame, {Size = Window.Config.Size}, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    
+    table.insert(self.Windows, Window)
+    return Window
+end
+
+function NexusUI:SetTheme(window, themeName)
+    local theme = self.Themes[themeName]
+    if not theme then return end
+    
+    window.Theme = theme
+    window.MainFrame.BackgroundColor3 = theme.Background
+    window.TopBar.BackgroundColor3 = theme.Secondary
+    window.TabContainer.BackgroundColor3 = theme.Secondary
+    window.TitleLabel.TextColor3 = theme.Text
+    
+    for _, tab in pairs(window.Tabs) do
+        tab.Button.BackgroundColor3 = tab.Active and theme.Secondary or theme.Tertiary
+        tab.Label.TextColor3 = tab.Active and theme.Text or theme.TextDark
+    end
+    
+    self:Notify({
+        Title = "Theme Changed",
+        Content = "The theme has been updated to: " .. themeName,
+        Duration = 3,
+        Type = "Info"
+    })
+end
+
+return NexusUI
+ogo = Instance.new("Frame")
     Logo.Size = UDim2.new(0, 32, 0, 32)
     Logo.Position = UDim2.new(0, 15, 0.5, -16)
     Logo.BackgroundColor3 = Window.Theme.Accent
