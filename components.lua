@@ -25,7 +25,7 @@ function Utilities:RippleEffect(button, color)
     ripple.Position = UDim2.new(0, relativePos.X, 0, relativePos.Y)
     
     local maxSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2
-    self:Tween(ripple, {Size = UDim2.new(0, maxSize, 0, maxSize), BackgroundTransparency = 1}, 0.5)
+    Utilities:Tween(ripple, {Size = UDim2.new(0, maxSize, 0, maxSize), BackgroundTransparency = 1}, 0.5)
     task.delay(0.5, function() ripple:Destroy() end)
 end
 
@@ -107,7 +107,7 @@ function Components.CreateTab(window, config)
         TabContent.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
     end)
     
-    local function ActivateTab()
+    function Tab.Activate()
         for _, tab in pairs(window.Tabs) do
             tab.Active = false
             Utilities:Tween(tab.Button, {BackgroundColor3 = window.Theme.Tertiary}, 0.2)
@@ -137,10 +137,9 @@ function Components.CreateTab(window, config)
     
     TabButton.MouseButton1Click:Connect(function()
         Utilities:RippleEffect(TabButton, color)
-        ActivateTab()
+        Tab.Activate()
     end)
     
-    if #window.Tabs == 0 then ActivateTab() end
     table.insert(window.Tabs, Tab)
     
     function Tab:Button(config)
@@ -191,7 +190,13 @@ function Components.CreateTab(window, config)
         Button.MouseLeave:Connect(function()
             Utilities:Tween(Button, {BackgroundColor3 = accentColor}, 0.2)
         end)
-        return Button
+        
+        local component = {
+            Config = config,
+            Instance = Button
+        }
+        table.insert(Tab.Elements, component)
+        return component
     end
     
     function Tab:Toggle(config)
@@ -258,10 +263,14 @@ function Components.CreateTab(window, config)
             Set(not toggled)
         end)
         
-        return {
+        local component = {
+            Config = config,
+            Instance = Frame,
             Set = Set,
             Get = function() return toggled end
         }
+        table.insert(Tab.Elements, component)
+        return component
     end
     
     function Tab:Slider(config)
@@ -343,6 +352,12 @@ function Components.CreateTab(window, config)
             if config.Callback then config.Callback(value) end
         end
         
+        local function Set(v)
+            value = math.clamp(v, config.Min or 0, config.Max or 100)
+            ValueLabel.Text = tostring(value)
+            Utilities:Tween(Fill, {Size = UDim2.new((value - (config.Min or 0)) / ((config.Max or 100) - (config.Min or 0)), 0, 1, 0)}, 0.2)
+        end
+        
         SliderBack.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true Update(input) end
         end)
@@ -353,14 +368,14 @@ function Components.CreateTab(window, config)
             if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then Update(input) end
         end)
         
-        return {
-            Set = function(v) 
-                value = v 
-                ValueLabel.Text = tostring(v) 
-                Utilities:Tween(Fill, {Size = UDim2.new((v - (config.Min or 0)) / ((config.Max or 100) - (config.Min or 0)), 0, 1, 0)}, 0.2) 
-            end,
+        local component = {
+            Config = config,
+            Instance = Frame,
+            Set = Set,
             Get = function() return value end
         }
+        table.insert(Tab.Elements, component)
+        return component
     end
     
     function Tab:Label(config)
@@ -384,7 +399,14 @@ function Components.CreateTab(window, config)
         Label.TextWrapped = true
         Label.Parent = Frame
         
-        return {SetText = function(t) Label.Text = t end, SetColor = function(c) Label.TextColor3 = c end}
+        local component = {
+            Config = config,
+            Instance = Frame,
+            SetText = function(t) Label.Text = t end, 
+            SetColor = function(c) Label.TextColor3 = c end
+        }
+        table.insert(Tab.Elements, component)
+        return component
     end
     
     function Tab:Section(config)
@@ -411,160 +433,55 @@ function Components.CreateTab(window, config)
         Title.Font = styles.Font
         Title.TextXAlignment = Enum.TextXAlignment.Left
         Title.Parent = Frame
-    end
-    
-    return Tab
-end
-
-return Components
- end
-        end)
         
-        return {Set = function(v) toggled = v Utilities:Tween(ToggleBtn, {BackgroundColor3 = v and window.Theme.Accent or window.Theme.Tertiary}, 0.3) Utilities:Tween(Circle, {Position = v and UDim2.new(1, -22, 0.5, -9.5) or UDim2.new(0, 3, 0.5, -9.5)}, 0.3) end}
+        local component = {
+            Config = config,
+            Instance = Frame
+        }
+        table.insert(Tab.Elements, component)
+        return component
     end
     
-    function Tab:Slider(config)
+    function Tab:Paragraph(config)
         config = config or {}
-        local value = config.Default or 50
-        
         local Frame = Instance.new("Frame")
-        Frame.Size = UDim2.new(1, 0, 0, config.Desc and 80 or 60)
+        Frame.Size = UDim2.new(1, 0, 0, 60) 
         Frame.BackgroundColor3 = window.Theme.Secondary
         Frame.BorderSizePixel = 0
         Frame.Parent = TabContent
-        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+        Instance.new("UICorner", Frame).CornerRadius = styles.CornerRadius
         
         local Title = Instance.new("TextLabel")
-        Title.Size = UDim2.new(0.7, 0, 0, 18)
-        Title.Position = UDim2.new(0, 15, 0, 10)
+        Title.Size = UDim2.new(1, -20, 0, 20)
+        Title.Position = UDim2.new(0, 10, 0, 5)
         Title.BackgroundTransparency = 1
-        Title.Text = config.Title or "Slider"
+        Title.Text = config.Title or "Paragraph Title"
         Title.TextColor3 = window.Theme.Text
-        Title.TextSize = 14
-        Title.Font = Enum.Font.GothamMedium
+        Title.TextSize = styles.TextSize
+        Title.Font = styles.Font
         Title.TextXAlignment = Enum.TextXAlignment.Left
         Title.Parent = Frame
         
-        local ValueLabel = Instance.new("TextLabel")
-        ValueLabel.Size = UDim2.new(0.3, -15, 0, 18)
-        ValueLabel.Position = UDim2.new(0.7, 0, 0, 10)
-        ValueLabel.BackgroundTransparency = 1
-        ValueLabel.Text = tostring(value)
-        ValueLabel.TextColor3 = window.Theme.Accent
-        ValueLabel.TextSize = 14
-        ValueLabel.Font = Enum.Font.GothamBold
-        ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-        ValueLabel.Parent = Frame
+        local Content = Instance.new("TextLabel")
+        Content.Size = UDim2.new(1, -20, 0, 30)
+        Content.Position = UDim2.new(0, 10, 0, 25)
+        Content.BackgroundTransparency = 1
+        Content.Text = config.Content or "Content here..."
+        Content.TextColor3 = window.Theme.TextDark
+        Content.TextSize = 12
+        Content.Font = styles.Font
+        Content.TextXAlignment = Enum.TextXAlignment.Left
+        Content.TextWrapped = true
+        Content.Parent = Frame
         
-        if config.Desc then
-            local Desc = Instance.new("TextLabel")
-            Desc.Size = UDim2.new(1, -30, 0, 15)
-            Desc.Position = UDim2.new(0, 15, 0, 30)
-            Desc.BackgroundTransparency = 1
-            Desc.Text = config.Desc
-            Desc.TextColor3 = window.Theme.TextDark
-            Desc.TextSize = 11
-            Desc.Font = Enum.Font.Gotham
-            Desc.TextXAlignment = Enum.TextXAlignment.Left
-            Desc.Parent = Frame
-        end
-        
-        local SliderBack = Instance.new("Frame")
-        SliderBack.Size = UDim2.new(1, -30, 0, 6)
-        SliderBack.Position = UDim2.new(0, 15, 1, config.Desc and -18 or -15)
-        SliderBack.BackgroundColor3 = window.Theme.Tertiary
-        SliderBack.BorderSizePixel = 0
-        SliderBack.Parent = Frame
-        Instance.new("UICorner", SliderBack).CornerRadius = UDim.new(1, 0)
-        
-        local Fill = Instance.new("Frame")
-        Fill.Size = UDim2.new((value - (config.Min or 0)) / ((config.Max or 100) - (config.Min or 0)), 0, 1, 0)
-        Fill.BackgroundColor3 = window.Theme.Accent
-        Fill.BorderSizePixel = 0
-        Fill.Parent = SliderBack
-        Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
-        
-        local Dot = Instance.new("Frame")
-        Dot.Size = UDim2.new(0, 16, 0, 16)
-        Dot.Position = UDim2.new(1, -8, 0.5, -8)
-        Dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Dot.BorderSizePixel = 0
-        Dot.Parent = Fill
-        Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
-        
-        local dragging = false
-        local function Update(input)
-            local pos = math.clamp((input.Position.X - SliderBack.AbsolutePosition.X) / SliderBack.AbsoluteSize.X, 0, 1)
-            value = math.floor((config.Min or 0) + pos * ((config.Max or 100) - (config.Min or 0)) / (config.Increment or 1) + 0.5) * (config.Increment or 1)
-            value = math.clamp(value, config.Min or 0, config.Max or 100)
-            ValueLabel.Text = tostring(value)
-            Utilities:Tween(Fill, {Size = UDim2.new((value - (config.Min or 0)) / ((config.Max or 100) - (config.Min or 0)), 0, 1, 0)}, 0.1)
-            if config.Callback then config.Callback(value) end
-        end
-        
-        SliderBack.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true Update(input) end
-        end)
-        SliderBack.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-        end)
-        game:GetService("UserInputService").InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then Update(input) end
-        end)
-        
-        return {Set = function(v) value = v ValueLabel.Text = tostring(v) Utilities:Tween(Fill, {Size = UDim2.new((v - (config.Min or 0)) / ((config.Max or 100) - (config.Min or 0)), 0, 1, 0)}, 0.2) end}
+        local component = {
+            Config = config,
+            Instance = Frame
+        }
+        table.insert(Tab.Elements, component)
+        return component
     end
-    
-    function Tab:Label(config)
-        config = config or {}
-        local Frame = Instance.new("Frame")
-        Frame.Size = UDim2.new(1, 0, 0, 40)
-        Frame.BackgroundColor3 = window.Theme.Secondary
-        Frame.BorderSizePixel = 0
-        Frame.Parent = TabContent
-        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
-        
-        local Label = Instance.new("TextLabel")
-        Label.Size = UDim2.new(1, -20, 1, 0)
-        Label.Position = UDim2.new(0, 10, 0, 0)
-        Label.BackgroundTransparency = 1
-        Label.Text = config.Text or "Label"
-        Label.TextColor3 = config.Color or window.Theme.Text
-        Label.TextSize = 14
-        Label.Font = Enum.Font.Gotham
-        Label.TextXAlignment = Enum.TextXAlignment.Left
-        Label.TextWrapped = true
-        Label.Parent = Frame
-        
-        return {SetText = function(t) Label.Text = t end, SetColor = function(c) Label.TextColor3 = c end}
-    end
-    
-    function Tab:Section(config)
-        config = config or {}
-        local Frame = Instance.new("Frame")
-        Frame.Size = UDim2.new(1, 0, 0, 35)
-        Frame.BackgroundTransparency = 1
-        Frame.Parent = TabContent
-        
-        local Line = Instance.new("Frame")
-        Line.Size = UDim2.new(1, -30, 0, 2)
-        Line.Position = UDim2.new(0, 15, 1, -2)
-        Line.BackgroundColor3 = window.Theme.Border
-        Line.BorderSizePixel = 0
-        Line.Parent = Frame
-        Instance.new("UICorner", Line).CornerRadius = UDim.new(1, 0)
-        
-        local Title = Instance.new("TextLabel")
-        Title.Size = UDim2.new(0, 200, 1, -5)
-        Title.BackgroundTransparency = 1
-        Title.Text = config.Title or "Section"
-        Title.TextColor3 = window.Theme.Accent
-        Title.TextSize = 15
-        Title.Font = Enum.Font.GothamBold
-        Title.TextXAlignment = Enum.TextXAlignment.Left
-        Title.Parent = Frame
-    end
-    
+
     return Tab
 end
 
