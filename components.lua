@@ -1,9 +1,33 @@
 local Components = {}
-local Window, Utilities
 
-function Components.Init(window, utilities)
-    Window = window
-    Utilities = utilities
+-- Utilities direkt hier definieren
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local Utilities = {}
+function Utilities:Tween(obj, props, dur)
+    TweenService:Create(obj, TweenInfo.new(dur or 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+
+function Utilities:RippleEffect(button, color)
+    local ripple = Instance.new("Frame")
+    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+    ripple.BackgroundColor3 = color or Color3.fromRGB(255, 255, 255)
+    ripple.BackgroundTransparency = 0.5
+    ripple.BorderSizePixel = 0
+    ripple.Size = UDim2.new(0, 0, 0, 0)
+    ripple.ZIndex = button.ZIndex + 1
+    ripple.Parent = button
+    Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
+    
+    local mousePos = UserInputService:GetMouseLocation()
+    local buttonPos = button.AbsolutePosition
+    local relativePos = mousePos - buttonPos
+    ripple.Position = UDim2.new(0, relativePos.X, 0, relativePos.Y)
+    
+    local maxSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2
+    self:Tween(ripple, {Size = UDim2.new(0, maxSize, 0, maxSize), BackgroundTransparency = 1}, 0.5)
+    task.delay(0.5, function() ripple:Destroy() end)
 end
 
 function Components.CreateTab(window, config)
