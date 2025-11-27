@@ -405,7 +405,8 @@ function NexusUI:CreateWindow(config)
     Window.ContentFrame = ContentFrame
     
     Window.CreateTab = function(self, config)
-        local Components = loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/Nexus-UI/refs/heads/main/components.lua"))()
+        -- KORRIGIERTE URL AUF DEIN REPO
+        local Components = loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/Nexus-UI/main/components.lua"))()
         local tab = Components.CreateTab(self, config)
         
         if not Window.ActiveTab then
