@@ -65,6 +65,27 @@ function Utilities:MakeDraggable(frame, dragFrame)
     end)
 end
 
+function Utilities:RippleEffect(button, color)
+    local ripple = Instance.new("Frame")
+    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+    ripple.BackgroundColor3 = color or Color3.fromRGB(255, 255, 255)
+    ripple.BackgroundTransparency = 0.5
+    ripple.BorderSizePixel = 0
+    ripple.Size = UDim2.new(0, 0, 0, 0)
+    ripple.ZIndex = button.ZIndex + 1
+    ripple.Parent = button
+    Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
+    
+    local mousePos = UserInputService:GetMouseLocation()
+    local buttonPos = button.AbsolutePosition
+    local relativePos = mousePos - buttonPos
+    ripple.Position = UDim2.new(0, relativePos.X, 0, relativePos.Y)
+    
+    local maxSize = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2
+    Utilities:Tween(ripple, {Size = UDim2.new(0, maxSize, 0, maxSize), BackgroundTransparency = 1}, 0.5)
+    task.delay(0.5, function() ripple:Destroy() end)
+end
+
 function NexusUI:Notify(config)
     config = config or {}
     local parent = GetParent()
@@ -187,6 +208,14 @@ function NexusUI:Save(window, fileName)
         ComponentStates = {}
     }
     
+    for _, tab in pairs(window.Tabs) do
+        for _, comp in pairs(tab.Elements) do
+            if comp.Get and comp.Config and comp.Config.Title then
+                data.ComponentStates[comp.Config.Title] = comp.Get()
+            end
+        end
+    end
+
     local success, json = pcall(HttpService.JSONEncode, HttpService, data)
     
     if success and pcall(setclipboard, json) then
@@ -211,6 +240,19 @@ function NexusUI:Load(window, json)
     if data.Position and data.Position.X and data.Position.Y then
         local pos = UDim2.new(0.5, data.Position.X, 0.5, data.Position.Y)
         Utilities:Tween(window.MainFrame, {Position = pos}, 0.3)
+    end
+    
+    if data.ComponentStates then
+        for _, tab in pairs(window.Tabs) do
+            for _, comp in pairs(tab.Elements) do
+                if comp.Set and comp.Config and comp.Config.Title then
+                    local savedValue = data.ComponentStates[comp.Config.Title]
+                    if savedValue ~= nil then
+                        comp.Set(savedValue)
+                    end
+                end
+            end
+        end
     end
     
     self:Notify({Title = "Laden erfolgreich", Content = "Konfiguration geladen.", Type = "Success", Duration = 3})
@@ -402,216 +444,6 @@ function NexusUI:SetTheme(window, themeName)
         Content = "The theme has been updated to: " .. themeName,
         Duration = 3,
         Type = "Info"
-    })
-end
-
-return NexusUI
-ogo = Instance.new("Frame")
-    Logo.Size = UDim2.new(0, 32, 0, 32)
-    Logo.Position = UDim2.new(0, 15, 0.5, -16)
-    Logo.BackgroundColor3 = Window.Theme.Accent
-    Logo.BorderSizePixel = 0
-    Logo.Parent = TopBar
-    
-    local logoCorner = Instance.new("UICorner")
-    logoCorner.CornerRadius = UDim.new(0, 8)
-    logoCorner.Parent = Logo
-    
-    local logoGradient = Instance.new("UIGradient")
-    logoGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Window.Theme.Accent),
-        ColorSequenceKeypoint.new(1, Window.Theme.AccentDark)
-    }
-    logoGradient.Rotation = 45
-    logoGradient.Parent = Logo
-    
-    -- Title
-    local Title = Instance.new("TextLabel")
-    Title.Size = UDim2.new(0, 350, 0, 20)
-    Title.Position = UDim2.new(0, 55, 0, 8)
-    Title.BackgroundTransparency = 1
-    Title.Text = Window.Config.Name
-    Title.TextColor3 = Window.Theme.Text
-    Title.TextSize = 17
-    Title.Font = Enum.Font.GothamBold
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.Parent = TopBar
-    
-    Window.TitleLabel = Title
-    
-    -- Author
-    local Author = Instance.new("TextLabel")
-    Author.Size = UDim2.new(0, 350, 0, 15)
-    Author.Position = UDim2.new(0, 55, 0, 28)
-    Author.BackgroundTransparency = 1
-    Author.Text = "by " .. Window.Config.Author
-    Author.TextColor3 = Window.Theme.TextDark
-    Author.TextSize = 12
-    Author.Font = Enum.Font.Gotham
-    Author.TextXAlignment = Enum.TextXAlignment.Left
-    Author.Parent = TopBar
-    
-    -- Minimize Button
-    local MinimizeButton = Instance.new("TextButton")
-    MinimizeButton.Size = UDim2.new(0, 36, 0, 36)
-    MinimizeButton.Position = UDim2.new(1, -90, 0.5, -18)
-    MinimizeButton.BackgroundColor3 = Window.Theme.Tertiary
-    MinimizeButton.Text = "—"
-    MinimizeButton.TextColor3 = Window.Theme.Text
-    MinimizeButton.TextSize = 18
-    MinimizeButton.Font = Enum.Font.GothamBold
-    MinimizeButton.AutoButtonColor = false
-    MinimizeButton.Parent = TopBar
-    
-    local minCorner = Instance.new("UICorner")
-    minCorner.CornerRadius = UDim.new(0, 8)
-    minCorner.Parent = MinimizeButton
-    
-    -- Close Button
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(0, 36, 0, 36)
-    CloseButton.Position = UDim2.new(1, -48, 0.5, -18)
-    CloseButton.BackgroundColor3 = Window.Theme.Danger
-    CloseButton.Text = "×"
-    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 22
-    CloseButton.Font = Enum.Font.GothamBold
-    CloseButton.AutoButtonColor = false
-    CloseButton.Parent = TopBar
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 8)
-    closeCorner.Parent = CloseButton
-    
-    -- Tab Container
-    local TabContainer = Instance.new("ScrollingFrame")
-    TabContainer.Name = "TabContainer"
-    TabContainer.Size = UDim2.new(0, 160, 1, -65)
-    TabContainer.Position = UDim2.new(0, 10, 0, 55)
-    TabContainer.BackgroundColor3 = Window.Theme.Secondary
-    TabContainer.BorderSizePixel = 0
-    TabContainer.ScrollBarThickness = 4
-    TabContainer.ScrollBarImageColor3 = Window.Theme.Accent
-    TabContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-    TabContainer.ScrollingDirection = Enum.ScrollingDirection.Y
-    TabContainer.Parent = MainFrame
-    
-    Window.TabContainer = TabContainer
-    
-    local tabCorner = Instance.new("UICorner")
-    tabCorner.CornerRadius = UDim.new(0, 10)
-    tabCorner.Parent = TabContainer
-    
-    local tabLayout = Instance.new("UIListLayout")
-    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    tabLayout.Padding = UDim.new(0, 8)
-    tabLayout.Parent = TabContainer
-    
-    local tabPadding = Instance.new("UIPadding")
-    tabPadding.PaddingTop = UDim.new(0, 10)
-    tabPadding.PaddingLeft = UDim.new(0, 8)
-    tabPadding.PaddingRight = UDim.new(0, 8)
-    tabPadding.PaddingBottom = UDim.new(0, 10)
-    tabPadding.Parent = TabContainer
-    
-    -- Content Container
-    local ContentContainer = Instance.new("Frame")
-    ContentContainer.Name = "ContentContainer"
-    ContentContainer.Size = UDim2.new(1, -185, 1, -65)
-    ContentContainer.Position = UDim2.new(0, 175, 0, 55)
-    ContentContainer.BackgroundTransparency = 1
-    ContentContainer.Parent = MainFrame
-    
-    Window.ContentContainer = ContentContainer
-    
-    -- Auto resize canvas
-    tabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        TabContainer.CanvasSize = UDim2.new(0, 0, 0, tabLayout.AbsoluteContentSize.Y + 20)
-    end)
-    
-    -- Draggable
-    Utilities:MakeDraggable(MainFrame, TopBar)
-    
-    -- Close Button
-    CloseButton.MouseButton1Click:Connect(function()
-        Utilities:RippleEffect(CloseButton, Color3.fromRGB(255, 255, 255))
-        Utilities:Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0)}, 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-        task.wait(0.3)
-        if Window.Config.CloseCallback then
-            Window.Config.CloseCallback()
-        end
-        ScreenGui:Destroy()
-    end)
-    
-    CloseButton.MouseEnter:Connect(function()
-        Utilities:Tween(CloseButton, {BackgroundColor3 = Color3.fromRGB(200, 40, 50)}, 0.2)
-    end)
-    
-    CloseButton.MouseLeave:Connect(function()
-        Utilities:Tween(CloseButton, {BackgroundColor3 = Window.Theme.Danger}, 0.2)
-    end)
-    
-    -- Minimize Button
-    MinimizeButton.MouseButton1Click:Connect(function()
-        Utilities:RippleEffect(MinimizeButton, Window.Theme.Accent)
-        Window.Minimized = not Window.Minimized
-        if Window.Minimized then
-            Utilities:Tween(MainFrame, {Size = UDim2.new(0, Window.Config.Size.X.Offset, 0, 50)}, 0.3)
-            MinimizeButton.Text = "□"
-        else
-            Utilities:Tween(MainFrame, {Size = Window.Config.Size}, 0.3)
-            MinimizeButton.Text = "—"
-        end
-    end)
-    
-    MinimizeButton.MouseEnter:Connect(function()
-        Utilities:Tween(MinimizeButton, {BackgroundColor3 = Window.Theme.Accent}, 0.2)
-    end)
-    
-    MinimizeButton.MouseLeave:Connect(function()
-        Utilities:Tween(MinimizeButton, {BackgroundColor3 = Window.Theme.Tertiary}, 0.2)
-    end)
-    
-    -- Minimize Key
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed and input.KeyCode == Window.Config.MinimizeKey then
-            MinimizeButton.MouseButton1Click:Fire()
-        end
-    end)
-    
-    -- Load Components
-    Window.CreateTab = function(self, config)
-        local Components = loadstring(game:HttpGet("https://raw.githubusercontent.com/dinoscripts2334/Nexus-UI/refs/heads/main/components.lua"))()
-        return Components.CreateTab(self, config)
-    end
-    
-    -- Startup Animation
-    Utilities:Tween(MainFrame, {Size = Window.Config.Size}, 0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    
-    table.insert(self.Windows, Window)
-    return Window
-end
-
--- Theme Switching
-function NexusUI:SetTheme(window, themeName)
-    local theme = self.Themes[themeName]
-    if not theme then return end
-    
-    window.Theme = theme
-    window.MainFrame.BackgroundColor3 = theme.Background
-    window.TopBar.BackgroundColor3 = theme.Secondary
-    window.TabContainer.BackgroundColor3 = theme.Secondary
-    window.TitleLabel.TextColor3 = theme.Text
-    
-    for _, tab in pairs(window.Tabs) do
-        tab.Button.BackgroundColor3 = tab.Active and theme.Secondary or theme.Tertiary
-        tab.Label.TextColor3 = tab.Active and theme.Text or theme.TextDark
-    end
-    
-    self:Notify({
-        Title = "Theme Changed",
-        Content = "Theme set to " .. themeName,
-        Duration = 2
     })
 end
 
